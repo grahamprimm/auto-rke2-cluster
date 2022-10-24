@@ -1,0 +1,77 @@
+[epel]
+async = 1
+baseurl = https://repo.big-bang{{ domain }}/epel
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-8
+name = EPEL YUM repo
+
+[epel-modular]
+async = 1
+baseurl = https://repo.big-bang{{ domain }}/epel-modular
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-8
+name = EPEL-Modular YUM repo
+
+[hashicorp]
+async = 1
+baseurl = https://repo.big-bang{{ domain }}/hashicorp
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/hashicorp.gpg
+name = hashicorp YUM repo
+
+[kubernetes]
+async = 1
+baseurl = https://repo.big-bang{{ domain }}/kubernetes
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/kubernetes-yum-key.gpg 
+        file:///etc/pki/rpm-gpg/kubernetes-rpm-package-key.gpg
+name = kubernetes repo
+
+[rancher-rke2-common-latest]
+name=Rancher RKE2 Common Latest
+baseurl=https://repo.big-bang{{ domain }}/rancher-rke2-common-latest
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/rancher-public.key
+
+[rancher-rke2-1-24-latest]
+name=Rancher RKE2 1.24 Latest
+baseurl=https://repo.big-bang{{ domain }}/rancher-rke2-1-24-latest
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/rancher-public.key
+
+[rhel-8-for-x86_64-baseos-rpms]
+name = Red Hat Enterprise Linux 8 for x86_64 - BaseOS (RPMs)
+baseurl = https://repo.big-bang{{ domain }}/rhel-8-for-x86_64-baseos-rpms
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+[ansible-2.9-for-rhel-8-x86_64-rpms]
+name = Red Hat Ansible Engine 2.9 for RHEL 8 x86_64 (RPMs)
+baseurl = https://repo.big-bang{{ domain }}/ansible-2.9-for-rhel-8-x86_64-rpms
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+[codeready-builder-for-rhel-8-x86_64-rpms]
+name = Red Hat CodeReady Linux Builder for RHEL 8 x86_64 (RPMs)
+baseurl = https://repo.big-bang{{ domain }}/codeready-builder-for-rhel-8-x86_64-rpms
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+[rhceph-5-tools-for-rhel-8-x86_64-rpms]
+name = Red Hat Ceph Storage Tools 5 for RHEL 8 x86_64 (RPMs)
+baseurl = https://repo.big-bang{{ domain }}/rhceph-5-tools-for-rhel-8-x86_64-rpms
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+[rhel-8-for-x86_64-appstream-rpms]
+name = Red Hat Enterprise Linux 8 for x86_64 - AppStream (RPMs)
+baseurl = https://repo.big-bang{{ domain }}/rhel-8-for-x86_64-appstream-rpms
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release

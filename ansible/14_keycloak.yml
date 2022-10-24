@@ -1,0 +1,55 @@
+---
+- name: Deploy keycloak
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    template: "{{ playbook_dir }}/templates/keycloak.yml.j2"
+
+- name: Deploy keycloak service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    definition:
+      apiVersion: "v1"
+      kind: "Service"
+      metadata: 
+        name: "prod-kc-service"
+        namespace: "prod-kc"
+        labels: 
+          app: "prod-kc"
+      spec: 
+        ports: 
+          - port: 53582
+            targetPort: 8080
+        selector: 
+          app: "prod-kc"
+
+- name: Deploy keycloak ingress
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    definition:
+      apiVersion: "networking.k8s.io/v1"
+      kind: "Ingress"
+      metadata: 
+        name: "prod-kc-ingress"
+        namespace: "prod-kc"
+        annotations:
+          kubernetes.io/ingress.class: "nginx"    
+          cert-manager.io/cluster-issuer: "ca-issuer"
+      spec: 
+        tls:
+        - hosts:
+          - keycloak{{ domain }}
+          secretName: prod-kc-tls
+        rules:
+        - host: "keycloak{{ domain }}"
+          http: 
+            paths: 
+              - path: /
+                pathType: Prefix
+                backend: 
+                  service: 
+                      name: "prod-kc"
+                      port: 
+                        number: 53582

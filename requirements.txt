@@ -1,0 +1,13 @@
+kubernetes 
+PyYAML 
+jsonpatch
+websocket-client
+certifi
+pyasn1
+rsa
+cachetools
+pyasn1-modules
+google-auth
+oauthlib
+requests-oauthlib
+jsonpointer

@@ -1,0 +1,16 @@
+mirrors:
+  docker.io:
+    endpoint:
+      - "https://registry.big-bang{{ domain }}"
+    rewrite:
+      "^rancher/(.*)": "/$1"
+      "^library/(.*)": "/$1"
+
+configs:
+  registry.big-bang{{ domain }}:
+    auth:
+      username: podman # this is the registry username
+      password: {{ podman_login.stdout }} # this is the registry password
+    tls:
+      ca_file: /etc/pki/ca-trust/source/anchors/ca-chain.crt # path to the ca file used to verify the registry's certificate
+      insecure_skip_verify: false

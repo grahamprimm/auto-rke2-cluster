@@ -1,0 +1,16 @@
+---
+- name: Deploy Metallb Operator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    src: "{{ playbook_dir }}/../services/metallb/metallb-native.yaml"
+
+- name: Sleep for 300 seconds and continue with play
+  ansible.builtin.wait_for:
+    timeout: 300
+
+- name: Configure Metallb
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    src: "{{ playbook_dir }}/../services/metallb/metallb.yml"

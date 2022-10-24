@@ -1,0 +1,8 @@
+write-kubeconfig-mode: "0644"
+tls-san:
+  - mother-lb
+  - {{ groups['rke2_lb'][0] }}
+node-taint:
+  - "CriticalAddonsOnly=true:NoExecute"
+token: {{ token }}
+

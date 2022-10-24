@@ -1,0 +1,5 @@
+tf/.terraform*
+tf/terraform*
+ansible/ansible.log
+vpass.txt
+ansible/files/rke2.yaml

@@ -1,0 +1,57 @@
+---
+- name: Install cert-manager
+  hosts: localhost
+  tasks:
+    - name: Define certificate chain files
+      ansible.builtin.set_fact:
+        cert_files:
+          - /etc/root_ca.crt
+          - /etc/intermediate_ca.crt
+
+    - name: Sleep for 300 seconds and continue with play
+      ansible.builtin.wait_for:
+        timeout: 180
+
+    - name: Install CustomResourceDefinitions for cert-manager
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: present
+        src: "{{ playbook_dir }}/../services/cert-manager/cert-manager.yml"
+
+    - name: Convert chain to base64
+      ansible.builtin.slurp:
+        src: "{{ playbook_dir }}/files/ca-chain.crt"
+      register: cm_crt
+
+    - name: Convert key to base64
+      ansible.builtin.slurp:
+        src: "/etc/key.pass"
+      register: cm_key
+
+    - name: Create a k8s namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        name: cert-manager
+        api_version: v1
+        kind: Namespace
+        state: present
+
+    - name: Create secret for cert manager
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: ca-key-pair
+            namespace: cert-manager
+          data:
+            tls.crt: "{{ cm_crt['content'] }}"
+            tls.key: "{{ cm_key['content'] }}"
+
+    - name: Create the issuer
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: present
+        src: "{{ playbook_dir }}/../services/cert-manager/ca-issuer.yml"

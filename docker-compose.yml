@@ -1,0 +1,28 @@
+authentik:
+    secret_key: "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf"
+    # This sends anonymous usage-data, stack traces on errors and
+    # performance data to sentry.beryju.org, and is fully opt-in
+    error_reporting:
+        enabled: true
+    postgresql:
+        password: "asdfasdfasdfasdfasdfasdf"
+
+ingress:
+    enabled: true
+    hosts:
+        - host: authentik.rt.lab
+          paths:
+              - path: "/"
+                pathType: Prefix
+
+postgresql:
+    enabled: true
+    postgresqlPassword: "asdfasdfasdfasdfasdfasdf"
+redis:
+    enabled: true
+
+livenessProbe:
+  enabled: false
+
+readinessProbe:
+  enabled: false

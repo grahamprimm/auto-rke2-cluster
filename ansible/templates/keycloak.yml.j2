@@ -1,0 +1,73 @@
+apiVersion: "apps/v1"
+kind: "Deployment"
+metadata: 
+  name: "prod-kc"
+  namespace: "prod-kc"
+spec: 
+  selector: 
+    matchLabels: 
+      app: "prod-kc"
+  replicas: 1
+  strategy: 
+    type: "RollingUpdate"
+    rollingUpdate: 
+      maxSurge: 1
+      maxUnavailable: 1
+  minReadySeconds: 5
+  template: 
+    metadata: 
+      labels: 
+        app: "prod-kc"
+    spec: 
+      containers: 
+        - 
+          name: "prod-kc"
+          image: "quay.io/keycloak/keycloak:16.1.1"
+          env: 
+            - name: "KEYCLOAK_USER"
+              value: "admin"
+
+            - name: "KEYCLOAK_PASSWORD"
+              value: "admin"
+
+            - name: "PROXY_ADDRESS_FORWARDING"
+              value: "true"
+
+            - name: "KEYCLOAK_FRONTEND_URL"
+              value: "https://keycloak.{{ domain }}/auth/"
+
+            - name: "KEYCLOAK_ADMIN_URL"
+              value: "https://keycloak.{{ domain }}/auth/realms/master/admin/"
+
+            - name: "DB_VENDOR"
+              value: "POSTGRES"
+
+            - name: "DB_DATABASE"
+              secret:
+                name: prod-pg-pguser
+                key: dbname
+
+            - name: "DB_ADDR"
+              secret:
+                name: prod-pg-pguser
+                key: host
+
+            - name: "DB_USER"
+              secret:
+                name: prod-pg-pguser
+                key: user
+
+            - name: "DB_PASSWORD"
+              secret:
+                name: prod-pg-pguser
+                key: password
+
+          ports: 
+            - name: "http"
+              containerPort: 8080
+            - name: "https"
+              containerPort: 8443
+          readinessProbe:
+              httpGet:
+                path: "/auth/realms/master"
+                port: 8080

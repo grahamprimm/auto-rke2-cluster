@@ -1,0 +1,83 @@
+---
+- name: RKE
+  hosts: rke2_cluster
+  become: true
+  become_method: sudo
+  tasks:
+    - name: Common role
+      ansible.builtin.include_tasks: 00_common.yml
+
+    - name: Install nfs-utils
+      ansible.builtin.dnf:
+        name:
+          - nfs4-acl-tools
+
+    - name: Create directories
+      ansible.builtin.file:
+        path: /data/backups
+        state: directory
+        mode: 0755
+
+    - name: Mount an NFS volume
+      ansible.posix.mount:
+        src: mother-nfs:/data
+        path: /data/backups
+        opts: rw,sync,hard
+        state: mounted
+        boot: true
+        fstype: nfs
+
+    - name: Disable FIREWALLD
+      ansible.builtin.systemd:
+        name: firewalld
+        state: stopped
+        enabled: false
+
+    - name: Upload ca-chain for registry
+      ansible.builtin.copy:
+        src: files/ca-chain.crt
+        dest: /etc/pki/ca-trust/source/anchors/
+        mode: 0644
+
+    - name: Update ca-trust
+      ansible.builtin.command: update-ca-trust extract
+
+    - name: Get podman pass from file
+      delegate_to: localhost
+      ansible.builtin.command: "cat /etc/certs/podman.pass"
+      register: podman_login
+
+    - name: Create /etc/rancher/rke2
+      ansible.builtin.file:
+        path: /etc/rancher/rke2
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Create registries.yaml
+      ansible.builtin.template:
+        src: templates/registries.yaml.j2
+        dest: /etc/rancher/rke2/registries.yaml
+        owner: root
+        group: root
+        mode: 0644
+
+- name: RKE
+  hosts: rke2_cluster
+  become: true
+  become_method: sudo
+  serial: 1
+  tasks:
+
+    - name: Bootstrap
+      ansible.builtin.include_tasks: 02_bootstrap.yml
+      when: inventory_hostname in groups['rke2_servers'][0]
+
+    - name: Setup other servers
+      ansible.builtin.include_tasks: 03_servers.yml
+      when: inventory_hostname in groups['rke2_servers'][1:]
+
+    - name: Setup agents
+      ansible.builtin.include_tasks: 04_agents.yml
+      when: inventory_hostname in groups['rke2_agents']

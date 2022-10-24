@@ -1,0 +1,48 @@
+---
+- name: Deploy NFS server
+  hosts: all
+  become: true
+  become_method: sudo
+  tasks:
+    - name: Common role
+      ansible.builtin.include_tasks: 00_common.yml
+
+    - name: Start and enable nfs service
+      ansible.builtin.service:
+        name: nfs-server
+        state: started
+        enabled: true
+
+    - name: Create directories
+      ansible.builtin.file:
+        path: /data
+        state: directory
+        mode: 0755
+        owner: nobody
+
+    - name: Restart nfs service
+      ansible.builtin.service:
+        name: nfs-server
+        state: restarted
+
+    - name: Copy file with owner and permissions
+      ansible.builtin.template:
+        src: exports.j2
+        dest: /etc/exports
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Export the share
+      ansible.builtin.command: "exportfs -ar"
+
+    - name: Open firewall port for nfs
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      with_items:
+        - nfs
+        - rpc-bind
+        - mountd

@@ -1,0 +1,56 @@
+---
+- name: Prepare cluster to install rook
+  hosts: localhost
+  tasks:
+    - name: Ensure the needed Namespaces exist
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        definition:
+          api_version: v1
+          kind: Namespace
+          metadata:
+            name: rook-ceph
+        state: present
+
+    - name: Create a crds for rook
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: present
+        src: "{{ playbook_dir }}/../services/rook/deploy/examples/{{ item }}"
+      with_items:
+        - crds.yaml
+        - common.yaml
+
+    - name: Create a rook operator and wait for it to be ready
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: present
+        src: "{{ playbook_dir }}/../services/rook/deploy/examples/operator.yaml"
+
+    - name: Deploy ceph cluster
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: present
+        src: "{{ playbook_dir }}/../services/rook/cluster.yaml"
+
+    - name: Create a crds for rook
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: present
+        src: "{{ playbook_dir }}/../services/rook/{{ item }}"
+      with_items:
+        - filesystem.yaml
+        - storageclass.yaml
+
+    # TODO: Update this Storageclass config
+    - name: Change default StorageClass to rook
+      kubernetes.core.k8s:
+        kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+        state: patched
+        definition:
+          apiVersion: v1
+          kind: StorageClass
+          metadata:
+            name: rook-cephfs
+            annotations:
+              storageclass.kubernetes.io/is-default-class: 'true'

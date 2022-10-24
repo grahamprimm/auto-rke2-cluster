@@ -1,0 +1,84 @@
+---
+- name: Update index.html
+  ansible.builtin.template:
+    src: templates/index.html.j2
+    dest: services/portal/index.html
+    owner: xadmin
+    group: xadmin
+    mode: '0644'
+
+- name: Deploy portal app
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: prod-portal
+        namespace: portal
+      spec:
+        replicas: 1
+        spec:
+          containers:
+            - name: prod-portal
+              image: nginx:1.23.1
+              ports:
+                - name: "http"
+                  containerPort: 80
+              volumeMounts:
+                - name: web-mount
+                  mountPath: /usr/share/nginx/html/
+          volumes:
+            - name: web-mount
+              hostPath:
+                path: "{{ playbook_dir }}/../services/portal/"
+
+- name: Deploy portal service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: prod-portal
+        namespace: portal
+        labels:
+          app: prod-portal
+          service: prod-portal
+      spec:
+        ports:
+        - port: 9001
+          targetPort: 80
+          protcol: tcp
+        selector:
+          app: prod-portal
+
+- name: Deploy portal ingress
+  kubernetes.core.k8s:
+    kubeconfig: "{{ playbook_dir }}/files/rke2.yaml"
+    state: present
+    definition:
+      apiVersion: networking.k8s.io/v1beta1
+      kind: Ingress
+      metadata:
+        name: ingress
+        annotations:
+          kubernetes.io/ingress.class: "nginx"
+          cert-manager.io/cluster-issuer: "ca-issuer"
+      spec:
+        tls:
+        - hosts:
+          - portal{{ domain }}
+          secretName: portal-tls
+        rules:
+        - host: portal{{ domain }}
+          http:
+            paths:
+            - path: /
+              backend:
+                service:
+                name: prod-portal
+                port:
+                  number: 9001

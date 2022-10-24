@@ -1,0 +1,201 @@
+---
+- name: Set dns server
+  ansible.builtin.template:
+    src: resolv.conf.j2
+    dest: /etc/resolv.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Download ca certs from big-bang
+  delegate_to: localhost
+  ansible.builtin.get_url:
+    url: "https://repo.big-bang{{ domain }}/certs/{{ item }}"
+    dest: "{{ playbook_dir }}/files/{{ item }}"
+    owner: xadmin
+    group: xadmin
+    mode: 0644
+    force: true
+    validate_certs: false
+  loop:
+    - ca-chain.crt
+    - intermediate_ca.crt
+    - root_ca.crt
+
+- name: Trust CA
+  become: true
+  ansible.builtin.copy:
+    src: files/ca-chain.crt
+    dest: /etc/pki/ca-trust/source/anchors/
+    mode: 0644
+
+- name: Remove system repos
+  ansible.builtin.lineinfile:
+    path: /etc/rhsm/rhsm.conf
+    regexp: '^manage_repos = 1'
+    line: 'manage_repos = 0'
+
+- name: Update CA
+  become: true
+  ansible.builtin.shell: update-ca-trust extract
+
+- name: Update hosts
+  ansible.builtin.copy:
+    src: files/hosts
+    dest: /etc/hosts
+    mode: 0644
+
+# - name: Add the IP to DNS
+#   nsupdate:
+#     key_name: "nsupdate"
+#     key_secret: ""
+#     server: "{{ dns_server }}" # variable passed through command line
+#     zone: "{{ zone }}" # variable passed through command line
+#     record: "{{ hostname }}" # variable passed through command line
+#     value: "{{ ansible_default_ipv4.address }}"
+#   delegate_to: 127.0.0.1
+
+- name: Download gpg keys from big-bang
+  delegate_to: localhost
+  ansible.builtin.get_url:
+    url: "https://repo.big-bang{{ domain }}/keys/{{ item }}"
+    dest: "{{ playbook_dir }}/files/{{ item }}"
+    owner: xadmin
+    group: xadmin
+    mode: 0644
+  loop:
+    - hashicorp.gpg
+    - kubernetes-rpm-package-key.gpg
+    - rancher-public.key
+    - RPM-GPG-KEY-redhat-beta
+    - kubernetes-yum-key.gpg
+    - RPM-GPG-KEY-EPEL-8
+    - RPM-GPG-KEY-redhat-release
+
+- name: Add GPG keys
+  become: true
+  ansible.builtin.copy:
+    src: "files/{{ item }}"
+    dest: "/etc/pki/rpm-gpg/{{ item }}"
+    mode: 0644
+    force: true
+  loop:
+    - hashicorp.gpg
+    - kubernetes-rpm-package-key.gpg
+    - rancher-public.key
+    - RPM-GPG-KEY-redhat-beta
+    - kubernetes-yum-key.gpg
+    - RPM-GPG-KEY-EPEL-8
+    - RPM-GPG-KEY-redhat-release
+
+- name: Check if six.pyc exists in /usr/bin
+  ansible.builtin.stat:
+    path: /usr/bin/six.pyc
+  register: six
+
+- name: Remove six.pyc file
+  ansible.builtin.file:
+    path: /usr/bin/six.pyc
+    state: absent
+  when: six.stat.exists
+
+- name: Remove subscriptions
+  community.general.redhat_subscription:
+    state: absent
+
+- name: Clear subscription cache
+  ansible.builtin.command: "subscription-manager clean"
+
+- name: Clean dnf
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - dnf autoremove -y
+    - dnf clean all
+    - subscription-manager config --rhsm.manage_repos=0
+
+- name: Stop fapolicyd
+  ansible.builtin.service:
+    name: fapolicyd
+    state: stopped
+    enabled: false
+
+- name: Remove system repos
+  ansible.builtin.replace:
+    path: /etc/yum.repos.d/{{ item }}
+    regexp: '^enabled=1'
+    replace: 'enabled=0'
+  with_items:
+    - epel-modular.repo
+    - epel.repo
+    - epel-testing-modular.repo
+    - epel-testing.repo
+    - redhat.repo
+  ignore_errors: true
+
+- name: Copy local repo config file
+  ansible.builtin.copy:
+    src: local.repo
+    dest: /etc/yum.repos.d/local.repo
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Check for line in /etc/rpm/macros.verify
+  ansible.builtin.lineinfile:
+    path: /etc/rpm/macros.verify
+    line: '%_pkgverify_level signature'
+    state: present
+    insertafter: EOF
+    create: true
+    mode: 0644
+
+- name: DNF update
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    update_only: true
+    nobest: false
+    skip_broken: true
+
+- name: Install nfs-utils
+  ansible.builtin.dnf:
+    name:
+      - nfs-utils
+
+- name: Check if data dir exists
+  ansible.builtin.stat:
+    path: /data
+  register: data_dir
+
+- name: Create data dir
+  ansible.builtin.file:
+    state: directory
+    path: /data
+    mode: 0644
+  when: (lb is not defined) and (not data_dir.stat.exists)
+
+- name: Add /data dir
+  ansible.builtin.command: "{{ item }}"
+  loop:
+    - "pvcreate /dev/sdb"
+    - "vgextend rhel /dev/sdb"
+    - "lvcreate -n data -l +100%FREE rhel"
+    - "mkfs.xfs /dev/rhel/data"
+  when: (lb is not defined) and (not data_dir.stat.exists)
+
+- name: Mount /data
+  ansible.builtin.mount:
+    path: /data
+    src: /dev/rhel/data
+    fstype: xfs
+    state: mounted
+    opts: defaults,noexec,nosuid,nodev
+  when: (lb is not defined) and (not data_dir.stat.exists)
+
+- name: Add /data to fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "/dev/mapper/rhel-data /data xfs defaults,noexec,nosuid,nodev 0 0"
+    state: present
+    insertafter: '^\/dev\/mapper\/rhel-var_tmp.*$'
+  when: (lb is not defined) and (not data_dir.stat.exists)
